@@ -10,151 +10,123 @@ import copy
 
 
 # Function to display the game board
-def show_board(grid):
+def display_grid(board):
+    print("\nCurrent Board:")
     for i in range(3):
-        print(f" {grid[i][0]} | {grid[i][1]} | {grid[i][2]} ")
+        print(f" {board[i][0]} | {board[i][1]} | {board[i][2]} ")
         if i < 2:
             print("-----------")
 
 
-# Function to check if someone has won
-def check_win(grid, marker):
-    # Check rows
+# Function to check if a player has won
+def has_winner(board, symbol):
+    # Check rows and columns
     for i in range(3):
-        if grid[i][0] == marker and grid[i][1] == marker and grid[i][2] == marker:
+        if all(board[i][j] == symbol for j in range(3)) or all(board[j][i] == symbol for j in range(3)):
             return True
-
-    # Check columns
-    for i in range(3):
-        if grid[0][i] == marker and grid[1][i] == marker and grid[2][i] == marker:
-            return True
-
     # Check diagonals
-    if grid[0][0] == marker and grid[1][1] == marker and grid[2][2] == marker:
+    if board[0][0] == symbol and board[1][1] == symbol and board[2][2] == symbol:
         return True
-    if grid[0][2] == marker and grid[1][1] == marker and grid[2][0] == marker:
+    if board[0][2] == symbol and board[1][1] == symbol and board[2][0] == symbol:
         return True
-
     return False
 
 
 # Function to check if the board is full
-def is_full(grid):
+def board_is_full(board):
+    return all(board[i][j] != " " for i in range(3) for j in range(3))
+
+
+# Function to get a random move for the computer (Easy mode)
+def find_random_spot(board):
+    available_spots = [(i, j) for i in range(3) for j in range(3) if board[i][j] == " "]
+    return random.choice(available_spots) if available_spots else None
+
+
+# Function to get the best move for the computer (Hard mode)
+def best_move(board, ai_symbol, player_symbol):
+    # Check if AI can win
     for i in range(3):
         for j in range(3):
-            if grid[i][j] == " ":
-                return False
-    return True
-
-
-# Function to get a random empty spot for the computer (easy mode)
-def random_move(grid):
-    available_spots = []
-    for i in range(3):
-        for j in range(3):
-            if grid[i][j] == " ":
-                available_spots.append((i, j))
-    if len(available_spots) > 0:
-        return random.choice(available_spots)
-    return None
-
-
-# Function to decide the computer's move (hard mode)
-def smart_move(grid, comp, player):
-    for i in range(3):
-        for j in range(3):
-            if grid[i][j] == " ":
-                grid[i][j] = comp
-                if check_win(grid, comp):
-                    grid[i][j] = " "
+            if board[i][j] == " ":
+                board[i][j] = ai_symbol
+                if has_winner(board, ai_symbol):
+                    board[i][j] = " "
                     return (i, j)
-                grid[i][j] = " "
-
+                board[i][j] = " "
+    # Block opponent from winning
     for i in range(3):
         for j in range(3):
-            if grid[i][j] == " ":
-                grid[i][j] = player
-                if check_win(grid, player):
-                    grid[i][j] = " "
+            if board[i][j] == " ":
+                board[i][j] = player_symbol
+                if has_winner(board, player_symbol):
+                    board[i][j] = " "
                     return (i, j)
-                grid[i][j] = " "
-
-    if grid[1][1] == " ":
+                board[i][j] = " "
+    # Choose center, then corners, then any available space
+    if board[1][1] == " ":
         return (1, 1)
-
     for corner in [(0, 0), (0, 2), (2, 0), (2, 2)]:
-        if grid[corner[0]][corner[1]] == " ":
+        if board[corner[0]][corner[1]] == " ":
             return corner
+    return find_random_spot(board)
 
-    return random_move(grid)
 
-
-# Function to handle game logic
-def start_game():
-    last_game = []
-
+# Main game loop
+def run_game():
+    last_match = []
     while True:
         print("\n1. Single player\n2. Two player\nD. Display last match\nQ. Quit")
         user_choice = input("What would you like to do: ").strip().upper()
 
         if user_choice == "1":
-            difficulty = input("E: Easy\nM: Medium\nH: Hard\nWhich level do you want to play: ").strip().upper()
             player_name = input("Enter your name: ")
-            comp_marker = "O"
-            player_marker = "X"
-            current_turn = player_marker if random.choice([True, False]) else comp_marker
-            print("Tossing a coin...")
-            print(f"{player_name if current_turn == player_marker else 'Computer'} goes first.")
-            game_grid = [[" " for _ in range(3)] for _ in range(3)]
-            move_history = []
+            difficulty = input("E: Easy\nM: Medium\nH: Hard\nChoose difficulty: ").strip().upper()
+            computer_symbol, player_symbol = "O", "X"
+            current_turn = player_symbol if random.choice([True, False]) else computer_symbol
+            print("Tossing a coin...", f"{player_name if current_turn == player_symbol else 'Computer'} goes first.")
+            game_board = [[" " for _ in range(3)] for _ in range(3)]
+            match_history = []
 
             while True:
-                show_board(game_grid)
-                if current_turn == player_marker:
+                display_grid(game_board)
+                if current_turn == player_symbol:
                     try:
-                        r = int(input(f"{player_name}, enter row (0-2): "))
-                        c = int(input(f"{player_name}, enter column (0-2): "))
-                        if game_grid[r][c] != " ":
+                        r, c = int(input(f"{player_name}, enter row (0-2): ")), int(input("Enter column (0-2): "))
+                        if game_board[r][c] != " ":
                             print("Invalid move. Try again.")
                             continue
                     except (ValueError, IndexError):
                         print("Invalid input. Try again.")
                         continue
                 else:
-                    if difficulty == "E":
-                        move = random_move(game_grid)
-                    elif difficulty == "H":
-                        move = smart_move(game_grid, comp_marker, player_marker)
-                    else:
-                        if random.choice([True, False]):
-                            move = random_move(game_grid)
-                        else:
-                            move = smart_move(game_grid, comp_marker, player_marker)
+                    move = find_random_spot(game_board) if difficulty == "E" else best_move(game_board, computer_symbol,
+                                                                                            player_symbol)
+                    if difficulty == "M" and random.choice([True, False]):
+                        move = find_random_spot(game_board)
                     if move:
                         r, c = move
                         print(f"Computer plays at ({r}, {c})")
 
-                game_grid[r][c] = current_turn
-                move_history.append(copy.deepcopy(game_grid))
+                game_board[r][c] = current_turn
+                match_history.append(copy.deepcopy(game_board))
 
-                if check_win(game_grid, current_turn):
-                    show_board(game_grid)
-                    print(f"{player_name if current_turn == player_marker else 'Computer'} wins!")
+                if has_winner(game_board, current_turn):
+                    display_grid(game_board)
+                    print(f"{player_name if current_turn == player_symbol else 'Computer'} wins!")
                     break
-                if is_full(game_grid):
-                    show_board(game_grid)
+                if board_is_full(game_board):
+                    display_grid(game_board)
                     print("It's a draw!")
                     break
-
-                current_turn = player_marker if current_turn == comp_marker else comp_marker
-
-            last_game = move_history.copy()
+                current_turn = player_symbol if current_turn == computer_symbol else computer_symbol
+            last_match = match_history.copy()
 
         elif user_choice == "D":
-            if last_game:
+            if last_match:
                 print("Last Match Replay:")
-                for move in last_game:
-                    show_board(move)
+                for move in last_match:
+                    display_grid(move)
                     print()
             else:
                 print("No match found.")
@@ -162,10 +134,9 @@ def start_game():
         elif user_choice == "Q":
             print("Thanks for playing. Hope you had fun!")
             break
-
         else:
             print("Invalid choice. Try again.")
 
 
 if __name__ == "__main__":
-    start_game()
+    run_game()
